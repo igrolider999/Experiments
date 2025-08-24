@@ -1,7 +1,7 @@
 vowels = ['а', 'у', 'о', 'ы', 'и', 'э', 'я', 'ю', 'ё', 'е']
 consonants = ["б", "в", "г", "д", "ж", "з", "к", "л", "м", "н","п","р","с","т","ф","х","ч","ш","щ"]
 
-word = "лестница"
+word = "ваня"
 
 def mat():
     global word
@@ -39,8 +39,7 @@ def mat():
                     else:
                         print("Хуй" + word)
                 if word[0] in vowels:
-                    word = word[1:]
-                    print("Хуё" + word)
+                    mat()
                 else:
                     mat()
     test1()
