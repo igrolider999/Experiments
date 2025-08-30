@@ -2,6 +2,7 @@ import socket,time,threading,os,sys
 from tkinter import *
 from tkinter import scrolledtext
 from PIL import Image, ImageTk
+from playsound import playsound
 
 am_server = None
 my_name = None
@@ -17,7 +18,7 @@ def start(side):
         server.bind(('0.0.0.0', 9999))
         server.listen(1)
         print("Server started, waiting for connections...")
-        state.config(text="Server started, waiting for connections...")
+        state.config(fg="white", text="Server started, waiting for connections...")
         try:
             client, addr = server.accept()
             print("Connected to:", addr)
@@ -105,7 +106,7 @@ def ping_server(sock):
             time.sleep(10)
         except Exception as e:
             print("Connection lost:", e)
-            state.config(text=f"Connection lost: {e}")
+            state.config(fg="#AC4343", text=f"Connection lost: {e}")
             connected = False
             break
 
@@ -171,19 +172,20 @@ def Chat(me, other, client):
 
     Label(chat, text=f"Chat with {other}", bg="#2F3031", fg="white", font=("Fixedsys", 10)).pack(pady=1)
     Label(chat, text="-"*35, bg="#2F3031", fg="#494949", font=("Fixedsys", 15)).pack()
-
-    if chat_history:
-        for sender, msg in chat_history:
-            messages.configure(state="normal")
-            messages.insert("end", f"{sender}: {msg}\n")
-            messages.configure(state="disabled")
+    
 
     def send_message():
         global chat_history
         message = textbox.get("1.0", "end").strip()
-        client.send(message.encode())
-        textbox.delete("1.0", "end")
-        chat_history.append((me, message))
+        if message == "ping":
+            ping_alert()
+        else:
+            client.send(message.encode())
+            textbox.delete("1.0", "end")
+            messages.configure(state="normal")
+            messages.insert("end", f"{me}: {message}\n\n")
+            messages.configure(state="disabled")
+            chat_history.append((me, message))
 
     send = button(chat, "Send", "#4FDD83", "#77FFA9", ("Fixedsys", 12), 35, 1, send_message, pady=2)
     send.button.pack(side="bottom", pady=5)
@@ -208,7 +210,7 @@ def Chat(me, other, client):
             print(chat_history)
     def update_messages(msg):
         messages.configure(state="normal")
-        messages.insert("end", msg + "\n")
+        messages.insert("end", f"{other}: {msg}" + "\n\n")
         messages.configure(state="disabled")
         messages.see("end")
     threading.Thread(target=get_messages, daemon=True).start()
@@ -217,13 +219,34 @@ def Chat(me, other, client):
         while chat_open:
             text = textbox.get("1.0", "end-1c")
             if text.endswith("\n"):
+                textbox.delete("1.0", "end")
                 message = text.strip()
                 if message:
-                    client.send(message.encode())
-                    textbox.after(0, lambda: textbox.delete("1.0", "end"))
+                    if message == "ping":
+                        ping_alert()
+                    else:
+                        client.send(message.encode())
+                        textbox.after(0, lambda: textbox.delete("1.0", "end"))
+                        messages.configure(state="normal")
+                        messages.insert("end", f"{me}: {message}\n\n")
+                        messages.configure(state="disabled")
+                        chat_history.append((me, message))
             time.sleep(0.1)
 
     threading.Thread(target=check_enter, daemon=True).start()
+
+    def ping_alert():
+        error = Toplevel(chat)
+        error.title("Error")
+        error.geometry("300x200")
+        error.configure(bg="#2F3031")
+        threading.Thread(target=lambda: playsound(os.path.join(os.path.dirname(__file__), "ping_alert.wav")), daemon=True).start()
+        Label(error, text="U fucking idiot", bg="#2F3031", fg="#AC4343", font=("Fixedsys", 12)).pack(pady=2)
+        time.sleep(0.2)
+        Label(error, text="u cant ping someone", bg="#2F3031", fg="#AC4343", font=("Fixedsys", 12)).pack(pady=2)
+        time.sleep(0.2)
+        Label(error, text="it is illegal", bg="#2F3031", fg="#AC4343", font=("Fixedsys", 12)).pack(pady=2)
+        chat.after(3000, error.destroy)
 
     def on_close():
         global chat_open
@@ -231,8 +254,8 @@ def Chat(me, other, client):
         chat.destroy()
         menu.deiconify()
 
-    actions.protocol("WM_DELETE_WINDOW", on_close)
-    
+    chat.protocol("WM_DELETE_WINDOW", on_close)
+
 
 def actions():
     global chat
